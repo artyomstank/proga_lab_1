@@ -1,7 +1,18 @@
+import json
+import os
+
+
 class Author:
     def __init__(self, name, birthdate):
         self.name = name
         self.birthdate = birthdate
+
+    def to_dict(self):
+        return {"name": self.name, "birthdate": self.birthdate}
+
+    @staticmethod
+    def from_dict(data):
+        return Author(data["name"], data["birthdate"])
 
     def __str__(self):
         return f"{self.name} (born {self.birthdate})"
@@ -10,8 +21,16 @@ class Author:
 class Book:
     def __init__(self, title, author, price):
         self.title = title
-        self.author = author  # объект класса Author
+        self.author = author
         self.price = price
+
+    def to_dict(self):
+        return {"title": self.title, "author": self.author.name, "price": self.price}
+
+    @staticmethod
+    def from_dict(data, authors):
+        author = next((a for a in authors if a.name == data["author"]), None)
+        return Book(data["title"], author, data["price"]) if author else None
 
     def __str__(self):
         return f"'{self.title}' by {self.author.name}, ${self.price}"
@@ -30,6 +49,18 @@ class User:
             return "No purchased books yet."
         return "\n".join([str(book) for book in self.purchased_books])
 
+    def to_dict(self):
+        return {
+            "username": self.username,
+            "purchased_books": [book.title for book in self.purchased_books],
+        }
+
+    @staticmethod
+    def from_dict(data, books):
+        user = User(data["username"])
+        user.purchased_books = [b for b in books if b.title in data["purchased_books"]]
+        return user
+
     def __str__(self):
         return self.username
 
@@ -38,6 +69,15 @@ class Order:
     def __init__(self, user, book):
         self.user = user
         self.book = book
+
+    def to_dict(self):
+        return {"user": self.user.username, "book": self.book.title}
+
+    @staticmethod
+    def from_dict(data, users, books):
+        user = next((u for u in users if u.username == data["user"]), None)
+        book = next((b for b in books if b.title == data["book"]), None)
+        return Order(user, book) if user and book else None
 
     def __str__(self):
         return f"Order of '{self.book.title}' by {self.user.username}"
@@ -49,6 +89,55 @@ books = []
 users = []
 orders = []
 
+# Файлы для хранения данных
+DATA_FILES = {
+    "authors": "authors.json",
+    "books": "books.json",
+    "users": "users.json",
+    "orders": "orders.json",
+}
+
+
+def save_data():
+    with open(DATA_FILES["authors"], "w") as f:
+        json.dump([author.to_dict() for author in authors], f)
+
+    with open(DATA_FILES["books"], "w") as f:
+        json.dump([book.to_dict() for book in books], f)
+
+    with open(DATA_FILES["users"], "w") as f:
+        json.dump([user.to_dict() for user in users], f)
+
+    with open(DATA_FILES["orders"], "w") as f:
+        json.dump([order.to_dict() for order in orders], f)
+
+    print("Data saved to files.")
+
+
+def load_data():
+    global authors, books, users, orders
+
+    def load_json(filename):
+        if os.path.exists(filename) and os.path.getsize(filename) > 0:
+            with open(filename, "r") as f:
+                try:
+                    return json.load(f)
+                except json.JSONDecodeError:
+                    print(f"Error: Could not decode JSON from {filename}. File might be corrupted.")
+                    return []
+        return []
+
+    authors_data = load_json(DATA_FILES["authors"])
+    books_data = load_json(DATA_FILES["books"])
+    users_data = load_json(DATA_FILES["users"])
+    orders_data = load_json(DATA_FILES["orders"])
+
+    authors = [Author.from_dict(data) for data in authors_data]
+    books = [Book.from_dict(data, authors) for data in books_data if Book.from_dict(data, authors)]
+    users = [User.from_dict(data, books) for data in users_data]
+    orders = [Order.from_dict(data, users, books) for data in orders_data]
+
+    print("Data loaded from files.")
 
 def add_author():
     name = input("Enter author name: ")
@@ -83,22 +172,6 @@ def add_user():
     print(f"User '{username}' added.")
 
 
-def list_books():
-    if not books:
-        print("No books available.")
-        return
-    for book in books:
-        print(book)
-
-
-def list_users():
-    if not users:
-        print("No users available.")
-        return
-    for user in users:
-        print(user)
-
-
 def purchase_book():
     username = input("Enter username: ")
     user = next((u for u in users if u.username == username), None)
@@ -118,37 +191,16 @@ def purchase_book():
     print(f"Book '{book.title}' purchased by {user.username}.")
 
 
-def list_purchased_books():
-    username = input("Enter username: ")
-    user = next((u for u in users if u.username == username), None)
-    if user is None:
-        print("User not found.")
-        return
-
-    print(f"Purchased books by {user.username}:")
-    print(user.list_purchased_books())
-
-
-def list_orders():
-    if not orders:
-        print("No orders placed yet.")
-        return
-    for order in orders:
-        print(order)
-
-
 def main_menu():
+    load_data()
     while True:
         print("\nMain Menu:")
         print("1. Add Author")
         print("2. Add Book")
         print("3. Add User")
-        print("4. List Books")
-        print("5. List Users")
-        print("6. Purchase Book")
-        print("7. List Purchased Books")
-        print("8. List Orders")
-        print("9. Exit")
+        print("4. Purchase Book")
+        print("5. Save Data")
+        print("6. Exit")
 
         choice = input("Enter your choice: ")
 
@@ -159,16 +211,11 @@ def main_menu():
         elif choice == "3":
             add_user()
         elif choice == "4":
-            list_books()
-        elif choice == "5":
-            list_users()
-        elif choice == "6":
             purchase_book()
-        elif choice == "7":
-            list_purchased_books()
-        elif choice == "8":
-            list_orders()
-        elif choice == "9":
+        elif choice == "5":
+            save_data()
+        elif choice == "6":
+            save_data()
             print("Exiting program.")
             break
         else:
