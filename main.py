@@ -138,7 +138,6 @@ def load_data():
     orders = [Order.from_dict(data, users, books) for data in orders_data]
 
     print("Data loaded from files.")
-
 def add_author():
     name = input("Enter author name: ")
     birthdate = input("Enter author birthdate: ")
@@ -190,6 +189,40 @@ def purchase_book():
     orders.append(order)
     print(f"Book '{book.title}' purchased by {user.username}.")
 
+def print_loaded_data():
+    print("\nLoaded Data:")
+
+    print("\nAuthors:")
+    if authors:
+        for author in authors:
+            print(author)
+    else:
+        print("No authors found.")
+
+    print("\nBooks:")
+    if books:
+        for book in books:
+            print(book)
+    else:
+        print("No books found.")
+
+    print("\nUsers:")
+    if users:
+        for user in users:
+            print(f"User: {user.username}")
+            print("Purchased Books:")
+            print(user.list_purchased_books())
+            print()
+    else:
+        print("No users found.")
+
+    print("\nOrders:")
+    if orders:
+        for order in orders:
+            print(order)
+    else:
+        print("No orders found.")
+
 
 def main_menu():
     load_data()
@@ -200,7 +233,8 @@ def main_menu():
         print("3. Add User")
         print("4. Purchase Book")
         print("5. Save Data")
-        print("6. Exit")
+        print("6. Show Loaded Data")
+        print("7. Exit")
 
         choice = input("Enter your choice: ")
 
@@ -215,6 +249,8 @@ def main_menu():
         elif choice == "5":
             save_data()
         elif choice == "6":
+            print_loaded_data()
+        elif choice == "7":
             save_data()
             print("Exiting program.")
             break
